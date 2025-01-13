@@ -9,7 +9,7 @@ pipeline {
     stage('Checkout') {
       steps {
         sh 'echo passed'
-        //git branch: 'master', url: 'https://github.com/Mfariyaj/Spring-Boot-app.git'
+        //git branch: 'master', url: 'https://github.com/Mfariyaj/My_Spring_boot_Project.git'
       }
     }
     stage('Build and Test') {
@@ -47,7 +47,7 @@ pipeline {
     }
     stage('Update Deployment File') {
         environment {
-            GIT_REPO_NAME = "Spring-Boot-app"
+            GIT_REPO_NAME = "My_Spring_boot_Project"
             GIT_USER_NAME = "Mfariyaj"
         }
         steps {
