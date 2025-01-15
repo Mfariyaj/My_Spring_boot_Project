@@ -68,16 +68,21 @@ pipeline {
             # Configure Git user and email
             git config --global user.email "fariyajshaikh86@gmail.com"
             git config --global user.name "fariyaj shaikh"
+                    # Ensure we are on the correct branch
+            git fetch origin master
+            git checkout -B master origin/master
             
             # Update the deployment file with the current BUILD_NUMBER
             sed -i 's/replaceImageTag/${BUILD_NUMBER}/g' java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
             
-            # Stage and commit the changes
+            # Stage the changes
             git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
-            git commit -m "Update Docker image tag to ${BUILD_NUMBER}" || echo "No changes to commit"
             
-            # Push changes to the master branch of the repository
-            git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git HEAD:master
+            # Commit changes only if there are any
+            git diff --cached --quiet || git commit -m "Update Docker image tag to ${BUILD_NUMBER}"
+            
+            # Push changes to the master branch
+            git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git master
           '''
         }
       }
