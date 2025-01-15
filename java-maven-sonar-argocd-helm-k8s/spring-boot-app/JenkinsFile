@@ -55,8 +55,7 @@ pipeline {
             dockerImage.push()
           }
           sh '''
-            # Update the deployment file with the current Docker image
-            sed -i 's|replaceImageTag|${BUILD_NUMBER}|g' java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+            sed -i "s|replaceImageTag|${BUILD_NUMBER}|g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
             
             # Verify the updated deployment file
             cat java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
