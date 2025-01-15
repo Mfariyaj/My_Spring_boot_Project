@@ -19,4 +19,4 @@ spec:
       - name: spring-boot-app
         image: fariyajs/springboot-1:11
         ports:
-        - containerPort: 8080
+        - containerPort: 8081
