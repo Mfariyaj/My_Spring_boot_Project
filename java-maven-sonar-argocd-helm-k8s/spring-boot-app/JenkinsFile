@@ -52,16 +52,21 @@ pipeline {
         }
         steps {
             withCredentials([string(credentialsId: 'github-2', variable: 'GITHUB_TOKEN')]) {
-                sh '''
-                    git config user.email "fariyajshaikh86@gmail.com"
-                    git config user.name "fariyaj shaikh"
-                    sed -i 's/replaceImageTag/${BUILD_NUMBER}/g' java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
-                    git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
-                    git status
-                    git commit -m "Update Docker image tag to ${BUILD_NUMBER}"
-                    git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} master
-                '''
-            }
+            sh '''
+                # Configure Git user and email
+                git config user.email "fariyajshaikh86@gmail.com"
+                git config user.name "fariyaj shaikh"
+                
+                # Update the deployment file with the current BUILD_NUMBER
+                sed -i 's/replaceImageTag/${BUILD_NUMBER}/g' java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+                
+                # Stage and commit the changes
+                git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+                git commit -m "Update Docker image tag to ${BUILD_NUMBER}" || echo "No changes to commit"
+                
+                # Push changes to the master branch of the repository
+                git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git master
+            '''
         }
     }
   }
