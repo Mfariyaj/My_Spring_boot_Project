@@ -74,6 +74,8 @@ pipeline {
             
             # Update the deployment file with the current BUILD_NUMBER
             sed -i 's/replaceImageTag/${BUILD_NUMBER}/g' java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+           
+            cat java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
             
             # Stage the changes
             git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
