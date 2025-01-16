@@ -17,6 +17,6 @@ spec:
     spec:
       containers:
       - name: spring-boot-app
-        image: repository/fariyaj-spring-boot:23
+        image: 905418030005.dkr.ecr.us-east-1.amazonaws.com/fariyaj-spring-boot:replaceImageTag
         ports:
         - containerPort: 8081
