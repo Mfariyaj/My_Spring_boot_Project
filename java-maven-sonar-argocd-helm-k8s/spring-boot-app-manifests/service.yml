@@ -4,11 +4,10 @@ metadata:
   name: spring-boot-app-service
   namespace: app
 spec:
-  type: NodePort
-  ports:
-  - name: http
-    port: 80
-    targetPort: 8081
-    protocol: TCP
   selector:
     app: spring-boot-app
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8081
+  type: LoadBalancer
