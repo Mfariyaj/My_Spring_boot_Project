@@ -17,6 +17,6 @@ spec:
     spec:
       containers:
       - name: spring-boot-app
-        image: repository/fariyaj-spring-boot:replaceImageTag
+        image: repository/fariyaj-spring-boot:23
         ports:
         - containerPort: 8081
