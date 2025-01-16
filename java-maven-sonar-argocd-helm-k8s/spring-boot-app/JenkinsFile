@@ -1,60 +1,60 @@
 pipeline {
-  agent {
-    docker {
-      image 'abhishekf5/maven-abhishek-docker-agent:v1'
-      args '--user root -v /var/run/docker.sock:/var/run/docker.sock' // Mount Docker socket to access the host's Docker daemon
-    }
-  }
-  environment {
-    BUILD_NUMBER = "${env.BUILD_NUMBER}" // Ensure BUILD_NUMBER is properly initialized
-    DOCKER_IMAGE = "fariyajs/springboot-1:${BUILD_NUMBER}"
-    GIT_REPO_NAME = "My_Spring_boot_Project"
-    GIT_USER_NAME = "Mfariyaj"
-    AWS_REGION = 'us-east-1'
-    ECR_REPO = 'fariyaj-spring-boot'
-    AWS_ACCOUNT_ID = '905418030005'
-    URL_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}"
-  }
-  stages {
-    stage('Checkout') {
-      steps {
-        script {
-          sh 'echo Checkout stage passed'
-          // Uncomment the following line to enable Git checkout
-          // git branch: 'master', url: 'https://github.com/Mfariyaj/My_Spring_boot_Project.git'
+    agent {
+        docker {
+            image 'abhishekf5/maven-abhishek-docker-agent:v1'
+            args '--user root -v /var/run/docker.sock:/var/run/docker.sock'
         }
-      }
     }
-    stage('Build and Test') {
-      steps {
-        script {
-          sh 'ls -ltr'
-          // Build the project and create a JAR file
-          sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && mvn clean package'
+    environment {
+        BUILD_NUMBER = "${env.BUILD_NUMBER}"
+        DOCKER_IMAGE = "fariyajs/springboot-1:${BUILD_NUMBER}"
+        GIT_REPO_NAME = "My_Spring_boot_Project"
+        GIT_USER_NAME = "Mfariyaj"
+        AWS_REGION = 'us-east-1'
+        ECR_REPO = 'fariyaj-spring-boot'
+        AWS_ACCOUNT_ID = '905418030005'
+        URL_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}"
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                script {
+                    echo "Checkout stage passed"
+                    // Uncomment to enable Git checkout
+                    // git branch: 'master', url: 'https://github.com/Mfariyaj/My_Spring_boot_Project.git'
+                }
+            }
         }
-      }
-    }
-    stage('Static Code Analysis') {
-      environment {
-        SONAR_URL = "http://172.31.95.48:9000"
-      }
-      steps {
-        withCredentials([string(credentialsId: 'sonar_cred', variable: 'SONAR_AUTH_TOKEN')]) {
-          sh '''
-            cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
-            mvn sonar:sonar -Dsonar.login=$SONAR_AUTH_TOKEN -Dsonar.host.url=${SONAR_URL}
-          '''
+        stage('Build and Test') {
+            steps {
+                script {
+                    sh '''
+                        ls -ltr
+                        cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
+                        mvn clean package
+                    '''
+                }
+            }
         }
-      }
-    }
-  stages {
+        stage('Static Code Analysis') {
+            environment {
+                SONAR_URL = "http://172.31.95.48:9000"
+            }
+            steps {
+                withCredentials([string(credentialsId: 'sonar_cred', variable: 'SONAR_AUTH_TOKEN')]) {
+                    sh '''
+                        cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
+                        mvn sonar:sonar -Dsonar.login=$SONAR_AUTH_TOKEN -Dsonar.host.url=${SONAR_URL}
+                    '''
+                }
+            }
+        }
         stage('Build and Push Docker Image to ECR') {
             steps {
                 script {
-                    // Build the Docker image
                     sh '''
                         cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
-                        docker build -t ${ECR_REPO} .
+                        docker build -t ${DOCKER_IMAGE} .
                     '''
 
                     // Authenticate with ECR
@@ -64,42 +64,38 @@ pipeline {
 
                     // Tag and push the Docker image to ECR
                     sh '''
-                        docker tag ${ECR_REPO} ${URL_REGISTRY}
-                        docker push ${URL_REGISTRY}
+                        docker tag ${DOCKER_IMAGE} ${URL_REGISTRY}:${BUILD_NUMBER}
+                        docker push ${URL_REGISTRY}:${BUILD_NUMBER}
                     '''
 
                     // Update the deployment manifest with the new build number
                     sh '''
-                        sed -i "s|replaceImageTag|${BUILD_NUMBER}|g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
-                        cat java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+                        sed -i "s|replaceImageTag|${BUILD_NUMBER}|g" ../spring-boot-app-manifests/deployment.yml
+                        cat ../spring-boot-app-manifests/deployment.yml
+                    '''
+                }
+            }
+        }
+        stage('Update Deployment File in Git') {
+            steps {
+                withCredentials([string(credentialsId: 'github-2', variable: 'GITHUB_TOKEN')]) {
+                    sh '''
+                        git config --global user.email "fariyajshaikh86@gmail.com"
+                        git config --global user.name "fariyaj shaikh"
+
+                        # Pull latest changes
+                        git fetch origin master
+                        git checkout master
+                        
+                        # Add and commit changes if there are any
+                        git add ../spring-boot-app-manifests/deployment.yml
+                        git diff --cached --quiet || git commit -m "Update Docker image tag to ${BUILD_NUMBER}"
+
+                        # Push changes to GitHub using the token
+                        git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git master
                     '''
                 }
             }
         }
     }
-    stage('Update Deployment File in Git') {
-      steps {
-        withCredentials([string(credentialsId: 'github-2', variable: 'GITHUB_TOKEN')]) {
-          sh '''
-            # Configure Git user and email
-            git config --global user.email "fariyajshaikh86@gmail.com"
-            git config --global user.name "fariyaj shaikh"
-            
-            # Ensure we are on the correct branch
-            git fetch origin master
-            git checkout -B master origin/master
-            
-            # Stage the changes
-            git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
-            
-            # Commit changes only if there are any
-            git diff --cached --quiet || git commit -m "Update Docker image tag to ${BUILD_NUMBER}"
-            
-            # Push changes to the master branch
-            git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git master
-          '''
-        }
-      }
-    }
-  }
 }
