@@ -19,4 +19,4 @@ spec:
       - name: spring-boot-app
         image: 905418030005.dkr.ecr.us-east-1.amazonaws.com/fariyaj-spring-boot:2
         ports:
-        - containerPort: 8081
+        - containerPort: 8080
