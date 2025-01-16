@@ -13,7 +13,7 @@ pipeline {
     AWS_REGION = 'us-east-1'
     ECR_REPO = 'fariyaj-spring-boot'
     AWS_ACCOUNT_ID = '905418030005'
-    URL_REGISTRY = "arn:aws:ecr:us-east-1:905418030005:repository/fariyaj-spring-boot"
+    URL_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}"
   }
   stages {
     stage('Checkout') {
@@ -47,33 +47,36 @@ pipeline {
         }
       }
     }
-  stage('Build and Push Docker Image') {
+  stages {
+        stage('Build and Push Docker Image to ECR') {
             steps {
                 script {
-                    withCredentials([usernamePassword(credentialsId: 'ECR_cred', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
-                        // Login to ECR
-                        sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${URL_REGISTRY}"
-                        
-                        // Build Docker image
-                        sh "docker build -t $ECR_REPO ."
+                    // Build the Docker image
+                    sh '''
+                        cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
+                        docker build -t ${ECR_REPO} .
+                    '''
 
-                        // Tag Docker image
-                        sh "docker tag $ECR_REPO:latest ${URL_REGISTRY}/$ECR_REPO:latest"
+                    // Authenticate with ECR
+                    sh '''
+                        aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+                    '''
 
-                        // Push Docker image to ECR
-                        sh "docker push ${URL_REGISTRY}/$ECR_REPO:latest"
+                    // Tag and push the Docker image to ECR
+                    sh '''
+                        docker tag ${ECR_REPO} ${URL_REGISTRY}
+                        docker push ${URL_REGISTRY}
+                    '''
 
-                        sh '''
-                            sed -i "s|replaceImageTag|${BUILD_NUMBER}|g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
-                            
-                            # Verify the updated deployment file
-                            cat java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
-                        '''
-                        
-                    }
+                    // Update the deployment manifest with the new build number
+                    sh '''
+                        sed -i "s|replaceImageTag|${BUILD_NUMBER}|g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+                        cat java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+                    '''
                 }
             }
         }
+    }
     stage('Update Deployment File in Git') {
       steps {
         withCredentials([string(credentialsId: 'github-2', variable: 'GITHUB_TOKEN')]) {
