@@ -52,30 +52,29 @@ pipeline {
         stage('Build and Push Docker Image to ECR') {
             steps {
                 script {
+                    // Ensure AWS CLI is available
+                    sh 'apt update && apt install -y awscli || echo "AWS CLI already installed"'
+        
+                    // Build the Docker image
                     sh '''
                         cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
                         docker build -t ${DOCKER_IMAGE} .
                     '''
-
-                    // Authenticate with ECR
+        
+                    // Authenticate with ECR without TTY
                     sh '''
                         aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
                     '''
-
-                    // Tag and push the Docker image to ECR
+        
+                    // Tag and Push the image
                     sh '''
                         docker tag ${DOCKER_IMAGE} ${URL_REGISTRY}:${BUILD_NUMBER}
                         docker push ${URL_REGISTRY}:${BUILD_NUMBER}
                     '''
-
-                    // Update the deployment manifest with the new build number
-                    sh '''
-                        sed -i "s|replaceImageTag|${BUILD_NUMBER}|g" ../spring-boot-app-manifests/deployment.yml
-                        cat ../spring-boot-app-manifests/deployment.yml
-                    '''
                 }
             }
         }
+
         stage('Update Deployment File in Git') {
             steps {
                 withCredentials([string(credentialsId: 'github-2', variable: 'GITHUB_TOKEN')]) {
