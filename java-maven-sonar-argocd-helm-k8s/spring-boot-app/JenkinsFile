@@ -71,6 +71,13 @@ pipeline {
                         docker tag ${DOCKER_IMAGE} ${URL_REGISTRY}:${BUILD_NUMBER}
                         docker push ${URL_REGISTRY}:${BUILD_NUMBER}
                     '''
+                    //upload the deployment yam file
+                    sh '''
+                        # Update the deployment manifest with the ECR image tag
+                        sed -i "s|replaceImageTag|${BUILD_NUMBER}|g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml       
+                        # Verify the changes made to deployment.yml
+                        cat java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+                   '''
                 }
             }
         }
